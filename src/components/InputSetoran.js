@@ -173,13 +173,6 @@ console.log("PAYLOAD:", payload);
           )}
         </div>
 
-        {/* AYAT */}
-        <input
-          value={ayat}
-          onChange={(e) => setAyat(e.target.value)}
-          placeholder="Ayat (opsional)"
-          className="w-full p-3 border rounded-lg"
-        />
 
         {/* BUTTON */}
         <button

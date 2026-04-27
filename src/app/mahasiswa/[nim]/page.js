@@ -1,8 +1,27 @@
 'use client';
 
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { getDetailSetoran } from "@/lib/api";
+import useSWR from "swr";
+import { ArrowLeft } from "lucide-react";
+
+const fetcher = async (url) => {
+  const token = localStorage.getItem("token");
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const json = await res.json();
+
+  if (!res.ok) throw new Error(json.message || "Gagal fetch data");
+
+  return json.data;
+};
+
 
 const normalize = (str) =>
   (str || "").toLowerCase().replace(/[^a-z]/g, "");
@@ -37,77 +56,34 @@ export default function DetailMahasiswa() {
   const { nim } = useParams();
   const router = useRouter();
 
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-
   const [loadingItem, setLoadingItem] = useState({
-    validasi: null,
     hapus: null,
   });
 
-  const token =
-    typeof window !== "undefined"
-      ? localStorage.getItem("token")
-      : null;
+  const { data, mutate, isLoading } = useSWR(
+    nim
+      ? `https://api.tif.uin-suska.ac.id/setoran-dev/v1/mahasiswa/setoran/${nim}`
+      : null,
+    fetcher,
+    { refreshInterval: 3000 } 
+  );
 
-  useEffect(() => {
-    if (!nim) return;
-    fetchDetail();
-  }, [nim]);
+  const detailSetoran = data?.setoran?.detail || [];
 
-  const fetchDetail = async () => {
-    try {
-      setLoading(true);
-      const res = await getDetailSetoran(nim);
-      setData(res.data.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleValidasi = async (surah) => {
-    setLoadingItem((p) => ({ ...p, validasi: surah.nama }));
-
-    try {
-      const res = await fetch(
-        `https://api.tif.uin-suska.ac.id/setoran-dev/v1/mahasiswa/setoran/${nim}`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            data_setoran: [
-              {
-                id_komponen_setoran: surah.nama,
-                nama_komponen_setoran: surah.nama,
-              },
-            ],
-            tgl_setoran: new Date().toISOString().split("T")[0],
-          }),
-        }
-      );
-
-      const result = await res.json();
-      console.log("VALIDASI:", result);
-
-      if (!res.ok) throw new Error(result.message || "Gagal validasi");
-
-      await fetchDetail();
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setLoadingItem((p) => ({ ...p, validasi: null }));
-    }
-  };
+  const sudahSetor = [
+    ...new Set(
+      detailSetoran.map((r) =>
+        normalize(r.surah || r.nama_surah)
+      )
+    )
+  ];
 
   const handleHapus = async (surah) => {
     setLoadingItem((p) => ({ ...p, hapus: surah.nama }));
 
     try {
+      const token = localStorage.getItem("token");
+
       const res = await fetch(
         `https://api.tif.uin-suska.ac.id/setoran-dev/v1/mahasiswa/setoran/${nim}`,
         {
@@ -127,11 +103,10 @@ export default function DetailMahasiswa() {
       );
 
       const result = await res.json();
-      console.log("HAPUS:", result);
 
       if (!res.ok) throw new Error(result.message || "Gagal hapus");
 
-      await fetchDetail();
+      await mutate(); 
     } catch (err) {
       alert(err.message);
     } finally {
@@ -139,23 +114,15 @@ export default function DetailMahasiswa() {
     }
   };
 
-  if (loading) {
+  console.log("DETAIL SETORAN RAW:", detailSetoran);
+
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-500">
         Loading...
       </div>
     );
   }
-
-  const detailSetoran = data?.setoran?.detail || [];
-
-  const sudahSetor = [
-    ...new Set(
-      detailSetoran.map((r) =>
-        normalize(r.surah || r.nama_surah)
-      )
-    )
-  ];
 
   const progress =
     data?.info?.info_setoran?.persentase_progres_setor ??
@@ -165,10 +132,18 @@ export default function DetailMahasiswa() {
   return (
     <div className="min-h-screen bg-[#f6f8fb] p-6 space-y-6 text-gray-800">
 
-      {/* HEADER */}
+
+      <button
+        onClick={() => router.push("/dashboard")}
+        className="flex items-center gap-2 px-4 py-2 bg-white border rounded-lg shadow-sm hover:bg-gray-100"
+      >
+        <ArrowLeft size={16} />
+        Kembali
+      </button>
+
       <div className="bg-white p-6 rounded-xl border shadow-sm">
         <h1 className="text-2xl font-bold">
-          {data.info?.nama || "-"}
+          {data?.info?.nama || "-"}
         </h1>
         <p className="text-gray-500">{nim}</p>
 
@@ -180,7 +155,7 @@ export default function DetailMahasiswa() {
       {/* CHECKLIST */}
       <div className="bg-white p-6 rounded-xl border shadow-sm">
         <h2 className="font-semibold mb-4">
-          Checklist Hafalan (Juz 30)
+          List Hafalan
         </h2>
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -199,31 +174,16 @@ export default function DetailMahasiswa() {
               >
                 <div className="font-medium">{s.nama}</div>
 
-                <div className="flex gap-2 mt-2">
-
-                  {/* VALIDASI */}
-                  {!done && (
-                    <button
-                      onClick={() => handleValidasi(s)}
-                      disabled={loadingItem.validasi === s.nama}
-                      className="px-2 py-1 text-xs bg-teal-500 text-white rounded"
-                    >
-                      {loadingItem.validasi === s.nama ? "..." : "Validasi"}
-                    </button>
-                  )}
-
-                  {/* HAPUS */}
-                  {done && (
-                    <button
-                      onClick={() => handleHapus(s)}
-                      disabled={loadingItem.hapus === s.nama}
-                      className="px-2 py-1 text-xs bg-red-500 text-white rounded"
-                    >
-                      {loadingItem.hapus === s.nama ? "..." : "Hapus"}
-                    </button>
-                  )}
-
-                </div>
+                {/* HAPUS BUTTON */}
+                {done && (
+                  <button
+                    onClick={() => handleHapus(s)}
+                    disabled={loadingItem.hapus === s.nama}
+                    className="mt-2 px-2 py-1 text-xs bg-red-500 text-white rounded"
+                  >
+                    {loadingItem.hapus === s.nama ? "Menghapus..." : "Hapus"}
+                  </button>
+                )}
               </div>
             );
           })}

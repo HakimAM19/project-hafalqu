@@ -5,81 +5,96 @@ import { simpanSetoran } from "@/lib/api";
 import { ChevronDown } from "lucide-react";
 
 const surahList = [
-  { nama: "Ad-Dhuha", ayat: 11 },
-  { nama: "Al-Insyirah", ayat: 8 },
-  { nama: "At-Tin", ayat: 8 },
-  { nama: "Al-Alaq", ayat: 19 },
-  { nama: "Al-Qadr", ayat: 5 },
-  { nama: "Al-Bayyinah", ayat: 8 },
-  { nama: "Az-Zalzalah", ayat: 8 },
-  { nama: "Al-Adiyat", ayat: 11 },
-  { nama: "Al-Qariah", ayat: 11 },
-  { nama: "At-Takatsur", ayat: 8 },
-  { nama: "Al-Asr", ayat: 3 },
-  { nama: "Al-Humazah", ayat: 9 },
-  { nama: "Al-Fil", ayat: 5 },
-  { nama: "Quraisy", ayat: 4 },
-  { nama: "Al-Maun", ayat: 7 },
-  { nama: "Al-Kautsar", ayat: 3 },
-  { nama: "Al-Kafirun", ayat: 6 },
-  { nama: "An-Nasr", ayat: 3 },
-  { nama: "Al-Lahab", ayat: 5 },
-  { nama: "Al-Ikhlas", ayat: 4 },
-  { nama: "Al-Falaq", ayat: 5 },
-  { nama: "An-Nas", ayat: 6 },
+  { nama: "Ad-Dhuha", ayat: 11, id: "SURAH_93" },
+  { nama: "Al-Insyirah", ayat: 8, id: "SURAH_94" },
+  { nama: "At-Tin", ayat: 8, id: "SURAH_95" },
+  { nama: "Al-Alaq", ayat: 19, id: "SURAH_96" },
+  { nama: "Al-Qadr", ayat: 5, id: "SURAH_97" },
+  { nama: "Al-Bayyinah", ayat: 8, id: "SURAH_98" },
+  { nama: "Az-Zalzalah", ayat: 8, id: "SURAH_99" },
+  { nama: "Al-Adiyat", ayat: 11, id: "SURAH_100" },
+  { nama: "Al-Qariah", ayat: 11, id: "SURAH_101" },
+  { nama: "At-Takatsur", ayat: 8, id: "SURAH_102" },
+  { nama: "Al-Asr", ayat: 3, id: "SURAH_103" },
+  { nama: "Al-Humazah", ayat: 9, id: "SURAH_104" },
+  { nama: "Al-Fil", ayat: 5, id: "SURAH_105" },
+  { nama: "Quraisy", ayat: 4, id: "SURAH_106" },
+  { nama: "Al-Maun", ayat: 7, id: "SURAH_107" },
+  { nama: "Al-Kautsar", ayat: 3, id: "SURAH_108" },
+  { nama: "Al-Kafirun", ayat: 6, id: "SURAH_109" },
+  { nama: "An-Nasr", ayat: 3, id: "SURAH_110" },
+  { nama: "Al-Lahab", ayat: 5, id: "SURAH_111" },
+  { nama: "Al-Ikhlas", ayat: 4, id: "SURAH_112" },
+  { nama: "Al-Falaq", ayat: 5, id: "SURAH_113" },
+  { nama: "An-Nas", ayat: 6, id: "SURAH_114" },
 ];
 
 export default function InputSetoran({ data, onSuccess }) {
-  const [selected, setSelected] = useState(""); // NIM
-  const [surah, setSurah] = useState("");
+  const [selected, setSelected] = useState(""); 
+  const [surah, setSurah] = useState(null);
   const [ayat, setAyat] = useState("");
   const [loading, setLoading] = useState(false);
   const [openMhs, setOpenMhs] = useState(false);
   const [openSurah, setOpenSurah] = useState(false);
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  if (!selected) return alert("Pilih mahasiswa dulu 😐");
-  if (!surah) return alert("Pilih surah dulu 😐");
+    if (!selected) return alert("Pilih mahasiswa dulu");
+    if (!surah) return alert("Pilih surah dulu");
 
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    // 🔥 PAKSA STRING
-    const nimFix = String(selected).trim();
+    try {
+      const token = localStorage.getItem("token");
+      const today = new Date().toISOString().split("T")[0];
 
-    const payload = {
-      surah: surah,
-      ayat: ayat ? String(ayat) : ""
-    };
+      const payload = {
+        data_setoran: [
+          {
+            id_komponen_setoran: surah.id,
+            nama_komponen_setoran: surah.nama
+          }
+        ],
+        tgl_setoran: today
+      };
 
-    console.log("TYPE NIM:", typeof nimFix);
-    console.log("NIM:", nimFix);
-    console.log("PAYLOAD:", payload);
+console.log("TOKEN:", token);
+console.log("SELECTED:", selected);
+console.log("PAYLOAD:", payload);
 
-    await simpanSetoran(nimFix, payload);
-
-    alert("Setoran berhasil 🔥");
-
-    setSelected("");
-    setSurah("");
-    setAyat("");
-
-    onSuccess();
-  } catch (err) {
-    console.log("ERROR FULL:", err);
-
-    if (err.response) {
-      console.log("STATUS:", err.response.status);
-      console.log("DATA:", err.response.data);
-    }
-
-    alert("Masih gagal 😵");
-  } finally {
-    setLoading(false);
+      const response = await fetch(
+  `https://api.tif.uin-suska.ac.id/setoran-dev/v1/mahasiswa/setoran/${selected}`,
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token?.trim()}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
   }
-};
+);
+      const result = await response.json();
+
+      if (!response.ok || !result.response) {
+        throw new Error(result.message || "Gagal simpan setoran");
+      }
+
+      alert("Setoran berhasil 🔥");
+
+      setSelected("");
+      setSurah(null);
+      setAyat("");
+
+      onSuccess?.();
+    } catch (err) {
+      console.log("ERROR:", err);
+      alert(err.message || "Masih gagal 😵");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
@@ -90,7 +105,7 @@ const handleSubmit = async (e) => {
 
       <form onSubmit={handleSubmit} className="space-y-4">
 
-        {/* PILIH MAHASISWA */}
+        {/* MAHASISWA */}
         <div className="relative">
           <button
             type="button"
@@ -98,30 +113,26 @@ const handleSubmit = async (e) => {
               setOpenMhs(!openMhs);
               setOpenSurah(false);
             }}
-            className="w-full flex justify-between items-center p-3 rounded-lg border border-gray-300 bg-white"
+            className="w-full flex justify-between items-center p-3 border rounded-lg"
           >
-            <span className={`${!selected && "text-gray-400"}`}>
+            <span>
               {selected
                 ? data.find((m) => m.nim === selected)?.nama
                 : "Pilih Mahasiswa"}
             </span>
-
-            <ChevronDown
-              size={18}
-              className={openMhs ? "rotate-180" : ""}
-            />
+            <ChevronDown size={18} />
           </button>
 
           {openMhs && (
-            <div className="absolute z-20 mt-2 w-full bg-white border rounded-lg max-h-48 overflow-y-auto">
-              {data.map((mhs, i) => (
+            <div className="absolute w-full bg-white border mt-2 rounded-lg max-h-48 overflow-y-auto z-10">
+              {data.map((mhs) => (
                 <div
-                  key={i}
+                  key={mhs.nim}
                   onClick={() => {
-                    setSelected(String(mhs.nim)); // 🔥 PASTI STRING
+                    setSelected(mhs.nim);
                     setOpenMhs(false);
                   }}
-                  className="px-4 py-2 hover:bg-teal-50 cursor-pointer"
+                  className="p-2 hover:bg-teal-50 cursor-pointer"
                 >
                   {mhs.nama} ({mhs.nim})
                 </div>
@@ -130,7 +141,7 @@ const handleSubmit = async (e) => {
           )}
         </div>
 
-        {/* PILIH SURAH */}
+        {/* SURAH */}
         <div className="relative">
           <button
             type="button"
@@ -138,30 +149,24 @@ const handleSubmit = async (e) => {
               setOpenSurah(!openSurah);
               setOpenMhs(false);
             }}
-            className="w-full flex justify-between items-center p-3 rounded-lg border border-gray-300 bg-white"
+            className="w-full flex justify-between items-center p-3 border rounded-lg"
           >
-            <span className={`${!surah && "text-gray-400"}`}>
-              {surah || "Pilih Surah"}
-            </span>
-
-            <ChevronDown
-              size={18}
-              className={openSurah ? "rotate-180" : ""}
-            />
+            <span>{surah ? surah.nama : "Pilih Surah"}</span>
+            <ChevronDown size={18} />
           </button>
 
           {openSurah && (
-            <div className="absolute z-20 mt-2 w-full bg-white border rounded-lg max-h-48 overflow-y-auto">
-              {surahList.map((s, i) => (
+            <div className="absolute w-full bg-white border mt-2 rounded-lg max-h-48 overflow-y-auto z-10">
+              {surahList.map((s) => (
                 <div
-                  key={i}
+                  key={s.id}
                   onClick={() => {
-                    setSurah(s.nama);
+                    setSurah(s);
                     setOpenSurah(false);
                   }}
-                  className="px-4 py-2 hover:bg-teal-50 cursor-pointer"
+                  className="p-2 hover:bg-teal-50 cursor-pointer"
                 >
-                  {s.nama} ({s.ayat} ayat)
+                  {s.nama}
                 </div>
               ))}
             </div>
@@ -170,18 +175,16 @@ const handleSubmit = async (e) => {
 
         {/* AYAT */}
         <input
-          type="text"
-          placeholder="Ayat (contoh: 1-5)"
           value={ayat}
           onChange={(e) => setAyat(e.target.value)}
-          className="w-full p-3 rounded-lg border border-gray-300"
+          placeholder="Ayat (opsional)"
+          className="w-full p-3 border rounded-lg"
         />
 
-        {/* SUBMIT */}
+        {/* BUTTON */}
         <button
-          type="submit"
           disabled={loading}
-          className="w-full py-3 rounded-lg bg-teal-500 text-white"
+          className="w-full py-3 bg-teal-500 text-white rounded-lg"
         >
           {loading ? "Menyimpan..." : "Simpan Setoran"}
         </button>
